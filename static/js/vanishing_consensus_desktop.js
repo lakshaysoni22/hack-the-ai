@@ -213,7 +213,8 @@ function glCloseBurpSuite() { glCloseWindow('gl-burpsuite-window'); }
 
 function glOpenTerminal() {
     glBringToFront('gl-terminal-window');
-    document.getElementById('gl-terminal-input')?.focus();
+    const input = document.getElementById('gl-term-input');
+    if (input) input.focus();
 }
 function glCloseTerminal() { glCloseWindow('gl-terminal-window'); }
 function glMinimizeTerminal() { glMinimizeWindow('gl-terminal-window'); }
@@ -526,21 +527,7 @@ Connection: close
     }, 400);
 }
 
-function glOpenTerminal() { glBringToFront('gl-terminal-window'); }
-function glCloseTerminal() { glCloseWindow('gl-terminal-window'); }
-function glMinimizeTerminal() { glMinimizeWindow('gl-terminal-window'); }
-
-function glOpenFileManager() { glBringToFront('gl-filemanager-window'); }
-function glCloseFileManager() { glCloseWindow('gl-filemanager-window'); }
-
-function glOpenAttackGraph() { glBringToFront('gl-attackgraph-window'); }
-function glCloseAttackGraph() { glCloseWindow('gl-attackgraph-window'); }
-
-function glOpenEvidenceViewer() { glBringToFront('gl-evidence-window'); }
-function glCloseEvidenceViewer() { glCloseWindow('gl-evidence-window'); }
-
-function glOpenNotes() { glBringToFront('gl-notes-window'); }
-function glCloseNotes() { glCloseWindow('gl-notes-window'); }
+// ── Mobile View Switching ─────────────────────────────────────────────
 
 function vcSwitchMobileView(mode) {
     const tasksPanel = document.querySelector('.gl-task-panel');
@@ -1002,21 +989,55 @@ function restartLab(labId) {
 // startInvestigation is initialized in DOMContentLoaded with timer binding
 
 // ── Terminal Engine Setup ─────────────────────────────────────────────
+let vcCmdHistory = [];
+let vcHistoryIndex = -1;
+
 function setupTerminal() {
     const termInput = document.getElementById('gl-term-input');
     const termBody = document.getElementById('gl-term-body');
     if (!termInput || !termBody) return;
 
+    // Click anywhere on terminal body to focus input
+    termBody.onclick = () => {
+        termInput.focus();
+    };
+
     termInput.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowUp') {
+            e.preventDefault();
+            if (vcCmdHistory.length === 0) return;
+            if (vcHistoryIndex === -1) vcHistoryIndex = vcCmdHistory.length - 1;
+            else if (vcHistoryIndex > 0) vcHistoryIndex--;
+            termInput.value = vcCmdHistory[vcHistoryIndex] || '';
+            return;
+        }
+        if (e.key === 'ArrowDown') {
+            e.preventDefault();
+            if (vcHistoryIndex !== -1) {
+                if (vcHistoryIndex < vcCmdHistory.length - 1) {
+                    vcHistoryIndex++;
+                    termInput.value = vcCmdHistory[vcHistoryIndex];
+                } else {
+                    vcHistoryIndex = -1;
+                    termInput.value = '';
+                }
+            }
+            return;
+        }
+
         if (e.key === 'Enter') {
             const rawCmd = termInput.value.trim();
             termInput.value = '';
             if (!rawCmd) return;
 
+            vcCmdHistory.push(rawCmd);
+            vcHistoryIndex = -1;
+
             // Echo command
             const echo = document.createElement('div');
             echo.className = 'gl-term-line';
-            echo.innerHTML = `<span class="gl-term-prompt">investigator@workstation:~$</span> ${escapeHtml(rawCmd)}`;
+            echo.style.margin = '4px 0 2px';
+            echo.innerHTML = `<span class="gl-term-prompt" style="color:#38bdf8; font-weight:600;">investigator@workstation:~$</span> ${escapeHtml(rawCmd)}`;
             termBody.appendChild(echo);
 
             // Execute command
@@ -1027,75 +1048,133 @@ function setupTerminal() {
 }
 
 function handleTerminalCommand(cmdStr, termBody) {
-    const parts = cmdStr.split(' ');
+    const parts = cmdStr.trim().split(/\s+/);
     const cmd = parts[0].toLowerCase();
     const arg = parts.slice(1).join(' ');
 
     const out = document.createElement('div');
     out.className = 'gl-term-line gl-term-output';
+    out.style.margin = '2px 0 8px';
+    out.style.lineHeight = '1.45';
 
     switch (cmd) {
         case 'help':
-            out.innerHTML = `Available Forensic Investigation Commands:
-  iot-status / iot-inspect  - Check IoT gateway GW-184 status & 184 active devices
-  iot-telemetry             - Dump synchronized sensor telemetry across sites
-  iot-devices               - List connected sensor hardware & flash memory check
-  iot-gateway-log           - Display raw gateway ingestion stream sequence
-  oracle-status / oracle    - Inspect Web3 oracle feed & aggregated price data
-  ai-status / ai-audit      - Audit AI sentinel (MODEL-ORION) & poisoned feedback EMB-IOT-9041
-  validator-status          - Display 3:2 validator consensus partition & state roots
-  web3-status               - Show Web3 state roots & block execution trace
-  timeline / case-log       - Show chronological cross-layer attack timeline
-  evidence                  - List secured cryptographic case evidence
-  burp / burpsuite          - Open Burp Suite HTTP proxy & inspector
-  cat <filename>            - Read case file (e.g. cat trust-chain-analysis.txt)
-  grep <term> <file>        - Search keyword in case logs
-  python <script>           - Run analysis script (e.g. python inspect_attack_chain.py)
-  whoami / pwd              - Display current investigator identity & path
-  flag                      - Print confirmed case flag
-  clear                     - Clear terminal display`;
+        case '?':
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">══════ CROSS-LAYER FORENSIC SUITE (CASE NEX-071) ══════</span>
+<span style="color:#facc15;">INVESTIGATION COMMANDS:</span>
+  <span style="color:#4ade80;">iot-status / iot</span>       - Check IoT gateway GW-184 status & 184 active devices
+  <span style="color:#4ade80;">iot-telemetry</span>          - Dump synchronized sensor telemetry across 14 sites
+  <span style="color:#4ade80;">iot-devices</span>            - List connected sensor hardware & flash memory check
+  <span style="color:#4ade80;">iot-gateway-log</span>        - Display raw gateway ingestion stream sequence
+  <span style="color:#4ade80;">oracle-status / oracle</span> - Inspect Web3 oracle feed & aggregated price data
+  <span style="color:#4ade80;">ai-status / ai-audit</span>   - Audit AI sentinel (MODEL-ORION) & poisoned feedback EMB-IOT-9041
+  <span style="color:#4ade80;">validator-status</span>       - Display 3:2 validator consensus partition & state roots
+  <span style="color:#4ade80;">web3-status</span>            - Show Web3 state roots (0x4f8e... vs 0x98a2...)
+  <span style="color:#4ade80;">governance / proposal</span>  - Inspect emergency containment proposal (GOV-NEX-071)
+  <span style="color:#4ade80;">timeline / case-log</span>    - Show chronological cross-layer attack timeline
+  <span style="color:#4ade80;">evidence</span>               - List secured cryptographic case evidence
+  <span style="color:#4ade80;">python [script]</span>        - Run analysis script (<span style="color:#38bdf8;">python inspect_attack_chain.py</span>)
+  <span style="color:#4ade80;">flag</span>                   - Print confirmed case flag
+
+<span style="color:#facc15;">SYSTEM & WORKSPACE COMMANDS:</span>
+  <span style="color:#4ade80;">ls / dir</span>               - List all case files and scripts
+  <span style="color:#4ade80;">cat [filename]</span>         - Display full contents of a case file
+  <span style="color:#4ade80;">grep [term] [file]</span>     - Search keyword in case logs
+  <span style="color:#4ade80;">curl [url]</span>             - Perform simulated HTTP request to internal feeds
+  <span style="color:#4ade80;">whoami / id / pwd</span>      - Investigator profile & current path
+  <span style="color:#4ade80;">burp / burpsuite</span>       - Open Burp Suite HTTP proxy & inspector
+  <span style="color:#4ade80;">notes / files / browser</span>- Open desktop applications
+  <span style="color:#4ade80;">clear / cls</span>            - Clear terminal display`;
             break;
 
         case 'clear':
-            termBody.innerHTML = '';
+        case 'cls':
+            termBody.innerHTML = `<div style="color:#38bdf8; font-weight:600;">Cross-Layer Forensic Environment [Version 4.2.0]</div>
+<div style="color:#64748b;">IoT × AI × Oracle × Blockchain Investigation Suite</div>
+<div style="color:#64748b;">Type <span style="color:#4ade80; font-weight:bold;">help</span> for available forensic commands. Up/Down for history.</div><br>`;
             return;
 
         case 'whoami':
-            out.innerHTML = `<span style="color:#38bdf8; font-weight:bold;">Lakshay</span> — Senior Distributed Systems Forensics Investigator (SOC Tier 2)`;
+            out.innerHTML = `<span style="color:#4ade80; font-weight:600;">Lakshay Soni</span> — Senior Distributed Systems Forensics Investigator (SOC Tier 2)`;
+            break;
+
+        case 'id':
+            out.innerHTML = `uid=1000(investigator) gid=1000(secops) groups=1000(secops),27(sudo),44(forensics),108(bft-audit)`;
             break;
 
         case 'pwd':
             out.innerHTML = `/home/investigator/cases/NEX-071`;
             break;
 
+        case 'date':
+            out.innerHTML = new Date().toUTCString();
+            break;
+
+        case 'uptime':
+            out.innerHTML = `03:00:00 up 18 days, 07:44, 1 user, load average: 0.22, 0.15, 0.08`;
+            break;
+
+        case 'history':
+            if (vcCmdHistory.length === 0) {
+                out.innerHTML = `No command history.`;
+            } else {
+                out.innerHTML = vcCmdHistory.map((h, i) => `  ${String(i + 1).padStart(3, ' ')}  ${escapeHtml(h)}`).join('\n');
+            }
+            break;
+
         case 'burp':
         case 'burpsuite':
             glOpenBurpSuite();
-            out.innerHTML = `<span style="color:#34d399;">[+] Burp Suite Proxy &amp; Inspector window opened.</span>`;
+            out.innerHTML = `<span style="color:#34d399;">[+] Burp Suite Proxy &amp; Inspector window opened on desktop.</span>`;
+            break;
+
+        case 'notes':
+        case 'editor':
+            glOpenNotes();
+            out.innerHTML = `<span style="color:#34d399;">[+] Investigator Scratchpad opened on desktop.</span>`;
+            break;
+
+        case 'files':
+        case 'explorer':
+        case 'filemanager':
+            glOpenFileManager();
+            out.innerHTML = `<span style="color:#34d399;">[+] Case Files Explorer window opened on desktop.</span>`;
+            break;
+
+        case 'browser':
+        case 'monitor':
+            glOpenBrowser();
+            out.innerHTML = `<span style="color:#34d399;">[+] IoT & Web3 Oracle Monitor window opened on desktop.</span>`;
+            break;
+
+        case 'graph':
+        case 'attackgraph':
+            glOpenAttackGraph();
+            out.innerHTML = `<span style="color:#34d399;">[+] Cross-Layer Attack Graph window opened on desktop.</span>`;
             break;
 
         case 'iot-status':
         case 'iot-inspect':
         case 'iot':
-            out.innerHTML = `[INDUSTRIAL IOT GATEWAY: GATEWAY-GW-184]
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">[INDUSTRIAL IOT GATEWAY: GATEWAY-GW-184]</span>
 Connected Sensors: 184 Industrial Devices (14 Geographical Sites)
 Reported Status:   <span style="color:#f87171; font-weight:bold;">ANOMALOUS SYNCHRONIZATION</span>
 Temperature:       21.40 °C (All 184 Sensors Identical)
 Power Draw:        412.00 W (All 184 Sensors Identical)
-Observed Jitter:   0.00% (SYNTHETIC PATTERN DETECTED)
+Observed Jitter:   <span style="color:#ff5f57; font-weight:700;">0.00%</span> (SYNTHETIC PATTERN DETECTED)
 Flash Comparison:  Device memory contains natural jitter; gateway output is synthesized.`;
             break;
 
         case 'iot-telemetry':
-            out.innerHTML = `[RAW SENSOR TELEMETRY COMPARISON]
-Sensor SENSOR-SITE-A-01 (Frankfurt)  -> Flash: 18.2°C, 395W | Gateway Stream: 21.4°C, 412W [TAMPERED]
-Sensor SENSOR-SITE-B-42 (Singapore)  -> Flash: 29.1°C, 440W | Gateway Stream: 21.4°C, 412W [TAMPERED]
-Sensor SENSOR-SITE-C-99 (New York)   -> Flash: 20.8°C, 405W | Gateway Stream: 21.4°C, 412W [TAMPERED]
-Sensor SENSOR-SITE-D-184 (Tokyo)     -> Flash: 16.5°C, 388W | Gateway Stream: 21.4°C, 412W [TAMPERED]`;
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">[RAW SENSOR TELEMETRY COMPARISON]</span>
+Sensor SENSOR-SITE-A-01 (Frankfurt)  -> Flash: 18.2°C, 395W | Gateway Stream: 21.4°C, 412W <span style="color:#ff5f57; font-weight:700;">[TAMPERED]</span>
+Sensor SENSOR-SITE-B-42 (Singapore)  -> Flash: 29.1°C, 440W | Gateway Stream: 21.4°C, 412W <span style="color:#ff5f57; font-weight:700;">[TAMPERED]</span>
+Sensor SENSOR-SITE-C-99 (New York)   -> Flash: 20.8°C, 405W | Gateway Stream: 21.4°C, 412W <span style="color:#ff5f57; font-weight:700;">[TAMPERED]</span>
+Sensor SENSOR-SITE-D-184 (Tokyo)     -> Flash: 16.5°C, 388W | Gateway Stream: 21.4°C, 412W <span style="color:#ff5f57; font-weight:700;">[TAMPERED]</span>`;
             break;
 
         case 'iot-devices':
-            out.innerHTML = `[CONNECTED IOT DEVICES AUDIT]
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">[CONNECTED IOT DEVICES AUDIT]</span>
 Total Devices:     184 Industrial Sensors (Sites A through N)
 Hardware Status:   Online, Uncompromised physically
 Firmware:          IoT-RTOS v2.4 (Signed)
@@ -1103,78 +1182,116 @@ Vulnerability:     Tampering occurs in aggregation pipeline on GATEWAY-GW-184.`;
             break;
 
         case 'iot-gateway-log':
-            out.innerHTML = `[GATEWAY-GW-184 INGESTION LOG]
+        case 'gateway-log':
+        case 'gateway':
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">[GATEWAY-GW-184 INGESTION LOG]</span>
 03:10:44 UTC [INGEST] Received 184 discrete sensor payloads (Valid checksums)
-03:10:48 UTC [RELAY]  Override filter applied: SYNTH_HARMONIC_V4
+03:10:48 UTC [RELAY]  Override filter applied: <span style="color:#facc15; font-weight:700;">SYNTH_HARMONIC_V4</span>
 03:10:52 UTC [ORACLE] Broadcasted synthetic telemetry to NOVA-PRICE-ORACLE`;
             break;
 
         case 'oracle':
         case 'oracle-status':
-            out.innerHTML = `[WEB3 ORACLE FEED: NOVA-PRICE-ORACLE]
-Upstream Source:       GATEWAY-GW-184 (IoT Telemetry Stream)
+        case 'oracle-feed':
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">[WEB3 ORACLE FEED: NOVA-PRICE-ORACLE]</span>
+Upstream Source:       <span style="color:#38bdf8; font-weight:700;">GATEWAY-GW-184</span> (IoT Telemetry Stream)
 Oracle Providers:      4 Nodes (Provider Alpha, Beta, Gamma, Delta)
-Consensus Agreement:   4 / 4 Agree (100% Agreement on Injected Telemetry)
-Derived Price State:   $4,820.50 (Computed from synthetic power load)
+Consensus Agreement:   <span style="color:#ff5f57; font-weight:700;">4 / 4 Agree</span> (100% Agreement on Injected Telemetry)
+Derived Price State:   <span style="color:#4ade80; font-weight:700;">$4,820.50</span> (Computed from synthetic power load)
 Vulnerability:         Multi-node agreement failed to guarantee external truth.`;
             break;
 
         case 'ai-audit':
         case 'ai-status':
         case 'ai':
-            out.innerHTML = `[AI SENTINEL AUDIT: MODEL-ORION v3.8.4]
-Classification:        NORMAL_NETWORK_VARIANCE
-Reported Confidence:   98.7%
-Poisoned Feedback ID:  EMB-IOT-9041 (1,200 synthetic events labeled as benign)
+        case 'ai-decision':
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">[AI SENTINEL AUDIT: MODEL-ORION v3.8.4]</span>
+Classification:        <span style="color:#4ade80; font-weight:700;">NORMAL_NETWORK_VARIANCE</span>
+Reported Confidence:   <span style="color:#facc15; font-weight:700;">98.7%</span>
+Poisoned Feedback ID:  <span style="color:#ff5f57; font-weight:700;">EMB-IOT-9041</span> (1,200 synthetic events labeled as benign)
 Safety Intervention:   Volatility alarms suppressed; 0 alerts escalated.
 Root Cause:            Model learned attacker's definition of normal.`;
             break;
 
         case 'validator':
         case 'validator-status':
-            out.innerHTML = `[VALIDATOR CLUSTER TOPOLOGY]
-Consensus Ratio:       3 Accept : 2 Reject (Derived State Root Divergence)
-Proposing Group:       VALIDATOR-V01..V03 -> Computed 0x4f8e39b2 from poisoned oracle
-Dissenting Group:      VALIDATOR-V04..V05 -> Computed 0x98a2e71c (Execution Halted)
+        case 'validators':
+        case 'consensus':
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">[VALIDATOR CLUSTER TOPOLOGY]</span>
+Consensus Ratio:       <span style="color:#ff5f57; font-weight:700;">3 Accept : 2 Reject</span> (Derived State Root Divergence)
+Proposing Group:       VALIDATOR-V01..V03 -> Computed <span style="color:#4ade80; font-weight:700;">0x4f8e39b2</span> from poisoned oracle
+Dissenting Group:      VALIDATOR-V04..V05 -> Computed <span style="color:#facc15; font-weight:700;">0x98a2e71c</span> (Execution Halted)
 Protocol Status:       No validator compromised; divergent execution inputs.`;
             break;
 
         case 'web3-status':
         case 'consensus-status':
-            out.innerHTML = `[WEB3 CONSENSUS & DISTRIBUTED STATE]
+        case 'state-root':
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">[WEB3 CONSENSUS & DISTRIBUTED STATE]</span>
 Block Height:          #982741 (Under Diagnostic Lock)
-State Root Match:      FAILED (3:2 Partition)
+State Root Match:      <span style="color:#ff5f57; font-weight:700;">FAILED (3:2 Partition)</span>
 Oracle Input:          NOVA-PRICE-ORACLE ($4,820.50)
-Dispute Resolution:    Emergency Proposal GOV-NEX-071 required to restore single root.`;
+Dispute Resolution:    Emergency Proposal <span style="color:#38bdf8; font-weight:700;">GOV-NEX-071</span> required to restore single root.`;
+            break;
+
+        case 'governance':
+        case 'proposal':
+        case 'gov-status':
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">[EMERGENCY GOVERNANCE PROPOSAL: GOV-NEX-071]</span>
+Status:                PENDING CONSENSUS RATIFICATION
+Target Gateway:        GATEWAY-GW-184 (Isolate Telemetry Relayer)
+AI Sentinel Action:    Purge Poisoned Embedding Vector EMB-IOT-9041
+Validator Recovery:    Roll back conflicting roots to unified baseline 0x4f8e...
+Result:                Consensus Restored across 21 Nodes`;
             break;
 
         case 'timeline':
         case 'case-log':
         case 'caselog':
         case 'trust-chain':
-            out.innerHTML = `[CROSS-LAYER TRUST-CHAIN RECONSTRUCTION]
-1. IoT SENSORS      -> Gateway GW-184 injects synthetic synchronized telemetry
-2. WEB3 ORACLE      -> NOVA-PRICE-ORACLE ingests poisoned aggregate as truth
-3. AI SENTINEL      -> MODEL-ORION suppresses alerts (trained on synthetic data)
-4. BLOCKCHAIN       -> 3:2 Validator divergence on derived state root
-5. RECOVERY         -> GOV-NEX-071 isolates gateway & restores unified consensus.`;
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">[CROSS-LAYER TRUST-CHAIN RECONSTRUCTION — CASE NEX-071]</span>
+1. [IoT SENSORS]      -> Gateway GW-184 injects synthetic synchronized telemetry (0.00% jitter)
+2. [WEB3 ORACLE]      -> NOVA-PRICE-ORACLE ingests poisoned aggregate as truth (4/4 agree)
+3. [AI SENTINEL]      -> MODEL-ORION suppresses alerts (trained on EMB-IOT-9041, 98.7% conf)
+4. [BLOCKCHAIN]       -> 3:2 Validator divergence on derived state root (0x4f8e... vs 0x98a2...)
+5. [RECOVERY]         -> GOV-NEX-071 isolates gateway & restores unified consensus.`;
             break;
 
         case 'evidence':
-            out.innerHTML = `Secured Case Evidence:
-  • IOT-E11: Synchronized IoT Telemetry Log (GATEWAY-GW-184)
-  • ORACLE-E12: Aggregated Oracle Data Feed (NOVA-PRICE-ORACLE)
-  • AI-E13: Poisoned AI Training Feedback (EMB-IOT-9041)
-  • CONSENSUS-E14: Validator State Root Divergence Trace (VAL-STATE-071)
-  • GOV-E15: Unified Cross-Layer Containment Proposal (GOV-NEX-071)`;
+            glOpenEvidenceViewer();
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">[SECURED CASE EVIDENCE REPOSITORY — CASE NEX-071]</span>
+  • <span style="color:#4ade80;">IOT-E11</span>: Synchronized IoT Telemetry Log (GATEWAY-GW-184)
+  • <span style="color:#4ade80;">ORACLE-E12</span>: Aggregated Oracle Data Feed (NOVA-PRICE-ORACLE)
+  • <span style="color:#4ade80;">AI-E13</span>: Poisoned AI Training Feedback (EMB-IOT-9041)
+  • <span style="color:#4ade80;">CONSENSUS-E14</span>: Validator State Root Divergence Trace (VAL-STATE-071)
+  • <span style="color:#4ade80;">GOV-E15</span>: Unified Cross-Layer Containment Proposal (GOV-NEX-071)`;
             break;
 
         case 'flag':
-            out.innerHTML = `<span style="color:#4ade80; font-weight:bold; font-size:13px;">NEXORA{v4n1sh1ng_c0ns3nsus_n3x071}</span>`;
+        case 'getflag':
+        case 'get-flag':
+            out.innerHTML = `<span style="color:#4ade80; font-weight:bold; font-size:13px;">[✓] CASE NEX-071 ROOT FLAG: NEXORA{vanishing_consensus_nex071}</span>`;
+            break;
+
+        case 'curl':
+            const curlUrl = arg || 'http://oracle-aggregator.secops.internal/feed/NOVA-PRICE-ORACLE';
+            out.innerHTML = `<span style="color:#4ade80;">HTTP/1.1 200 OK</span>
+<span style="color:#94a3b8;">Server: Oracle-Aggregator/2.5</span>
+<span style="color:#94a3b8;">Content-Type: application/json</span>
+
+{
+  "status": "ORACLE_AGGREGATION_SUCCESS",
+  "endpoint": "${escapeHtml(curlUrl)}",
+  "source_gateway": "GATEWAY-GW-184",
+  "providers_aligned": 4,
+  "oracle_derived_state": "0x3f8a11bc9042",
+  "finding": "VULNERABILITY CONFIRMED: Upstream IoT manipulation propagated directly into Web3 oracle state."
+}`;
             break;
 
         case 'python':
-            if (arg.includes('inspect_attack_chain.py') || arg.includes('inspect')) {
+        case 'python3':
+            if (arg.includes('inspect_attack_chain.py') || arg.includes('inspect') || !arg) {
                 out.innerHTML = `[*] Loading Case NEX-071 Cross-Layer Telemetry...
 [+] [IoT SENSORS] -> 184 Nodes Online — Synthetic Gateway Injection (GW-184)
 [+] [WEB3 ORACLE] -> NOVA-PRICE-ORACLE — 4 Providers Agree on Corrupted Stream
@@ -1182,31 +1299,40 @@ Dispute Resolution:    Emergency Proposal GOV-NEX-071 required to restore single
 [+] [BLOCKCHAIN]  -> BFT-POS Validators — 3 Accept vs 2 Reject (Consensus Split)
 [+] [RECOVERY]    -> GOV-NEX-071 — Gateway Isolated, Consensus Restored
 
-[✓] CASE NEX-071 FLAG: NEXORA{v4n1sh1ng_c0ns3nsus_n3x071}`;
+[✓] CASE NEX-071 FLAG: NEXORA{vanishing_consensus_nex071}`;
             } else {
-                out.innerHTML = `Script ${escapeHtml(arg)} not found. Try: python inspect_attack_chain.py`;
+                out.innerHTML = `Script ${escapeHtml(arg)} not found. Try: <span style="color:#38bdf8;">python inspect_attack_chain.py</span>`;
             }
             break;
 
         case 'cat':
+        case 'head':
+        case 'tail':
+        case 'type':
+        case 'more':
             if (caseFiles[arg]) {
-                out.innerHTML = `<pre style="margin:0; font-family:var(--font-mono); color:#cbd5e1; white-space:pre-wrap;">${escapeHtml(caseFiles[arg])}</pre>`;
+                out.innerHTML = `<span style="color:#38bdf8;">--- Content of ${escapeHtml(arg)} ---</span>\n<pre style="margin:4px 0 0; font-family:var(--font-mono); color:#cbd5e1; white-space:pre-wrap;">${escapeHtml(caseFiles[arg])}</pre>`;
             } else {
-                out.innerHTML = `File not found: ${escapeHtml(arg)}. Try: cat trust-chain-analysis.txt or cat iot-telemetry-gw184.log`;
+                out.innerHTML = `File not found: ${escapeHtml(arg)}. Try: <span style="color:#38bdf8;">ls</span> or <span style="color:#38bdf8;">cat trust-chain-analysis.txt</span>`;
             }
             break;
 
         case 'ls':
         case 'dir':
-            out.innerHTML = `iot-telemetry-gw184.log   oracle-feed-dump.json   ai-training-baseline.log
-validator-state-roots.txt   trust-chain-analysis.txt   inspect_attack_chain.py`;
+            out.innerHTML = `<span style="color:#38bdf8; font-weight:700;">Case NEX-071 Forensic Workspace Files:</span>
+  -rw-r--r-- 1 investigator secops  1.8K  <span style="color:#cbd5e1;">iot-telemetry-gw184.log</span>
+  -rw-r--r-- 1 investigator secops  1.1K  <span style="color:#cbd5e1;">oracle-aggregation.json</span>
+  -rw-r--r-- 1 investigator secops  1.5K  <span style="color:#cbd5e1;">orion-training-poison.log</span>
+  -rw-r--r-- 1 investigator secops  980B  <span style="color:#cbd5e1;">validator-divergence.log</span>
+  -rw-r--r-- 1 investigator secops  2.2K  <span style="color:#cbd5e1;">trust-chain-analysis.txt</span>
+  -rwxr-xr-x 1 investigator secops  1.0K  <span style="color:#4ade80; font-weight:600;">inspect_attack_chain.py</span>`;
             break;
 
         case 'grep':
-            const gParts = arg.split(' ');
+            const gParts = arg.split(/\s+/);
             const term = gParts[0]?.toLowerCase();
             if (!term) {
-                out.innerHTML = `Usage: grep <term> <file>`;
+                out.innerHTML = `Usage: grep &lt;term&gt; &lt;file&gt;`;
                 break;
             }
             let matches = [];
@@ -1219,7 +1345,7 @@ validator-state-roots.txt   trust-chain-analysis.txt   inspect_attack_chain.py`;
             break;
 
         default:
-            out.innerHTML = `Command not recognized: ${escapeHtml(cmd)}. Type 'help' for available commands.`;
+            out.innerHTML = `<span style="color:#ff5f57;">bash: ${escapeHtml(cmd)}: command not found.</span> Type <span style="color:#38bdf8;">help</span> for available commands.`;
             break;
     }
 
@@ -1227,7 +1353,8 @@ validator-state-roots.txt   trust-chain-analysis.txt   inspect_attack_chain.py`;
 }
 
 function escapeHtml(str) {
-    return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+    if (!str) return '';
+    return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
 
 // ── Scratchpad Notes ──────────────────────────────────────────────────

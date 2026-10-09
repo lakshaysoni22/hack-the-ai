@@ -45,22 +45,34 @@ def submit_quiz():
     return jsonify(resp)
 
 @api_bp.route('/hint', methods=['POST'])
+@api_bp.route('/hint/unlock', methods=['POST'])
 @limiter.limit("20 per minute")
 def use_hint():
     if 'user_id' not in session:
         return jsonify({'success': False, 'message': 'Unauthorized'}), 401
     user_id = session['user_id']
     data = request.get_json()
-    if not data or not all(k in data for k in ("lab_id", "mission_id")):
+    if not data:
         return jsonify({'success': False, 'message': 'Invalid input'}), 400
         
+    hint_id = data.get('hint_id')
+    if hint_id:
+        from models import Hint
+        hint_obj = Hint.query.filter_by(id=hint_id).first()
+        if hint_obj:
+            log_action(user_id, 'HINT_USED', f"Hint ID: {hint_id}")
+            return jsonify({'success': True, 'message': 'Hint unlocked.', 'hint_text': hint_obj.hint_text, 'hint': hint_obj.hint_text})
+        return jsonify({'success': False, 'message': 'Hint not found.'})
+
     lab_id = data.get('lab_id')
     mission_id = data.get('mission_id')
+    if not lab_id or not mission_id:
+        return jsonify({'success': False, 'message': 'Invalid input'}), 400
     
     success, message, hint_text = get_hint(user_id, lab_id, mission_id)
     if success:
         log_action(user_id, 'HINT_USED', f"Mission: {mission_id}")
-        return jsonify({'success': True, 'message': message, 'hint': hint_text})
+        return jsonify({'success': True, 'message': message, 'hint': hint_text, 'hint_text': hint_text})
         
     return jsonify({'success': False, 'message': message})
 

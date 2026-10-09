@@ -748,83 +748,105 @@ function initTerminal() {
     const termOutput = document.getElementById('gl-terminal-output');
     if (!termInput || !termOutput) return;
 
-    termInput.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            if (cmdHistory.length === 0) return;
-            if (historyIndex === -1) historyIndex = cmdHistory.length - 1;
-            else if (historyIndex > 0) historyIndex--;
-            termInput.value = cmdHistory[historyIndex] || '';
-            return;
-        }
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            if (historyIndex !== -1) {
-                if (historyIndex < cmdHistory.length - 1) {
-                    historyIndex++;
-                    termInput.value = cmdHistory[historyIndex];
-                } else {
-                    historyIndex = -1;
-                    termInput.value = '';
-                }
+    // Ensure terminal body click always focuses the active input
+    termOutput.onclick = () => {
+        const activeInput = document.getElementById('gl-terminal-input');
+        if (activeInput) activeInput.focus();
+    };
+
+    termInput.addEventListener('keydown', handleTerminalKeydown);
+    termInput.focus();
+}
+
+function handleTerminalKeydown(e) {
+    const termInput = e.target;
+    const termOutput = document.getElementById('gl-terminal-output');
+    if (!termInput || !termOutput) return;
+
+    if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (cmdHistory.length === 0) return;
+        if (historyIndex === -1) historyIndex = cmdHistory.length - 1;
+        else if (historyIndex > 0) historyIndex--;
+        termInput.value = cmdHistory[historyIndex] || '';
+        return;
+    }
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        if (historyIndex !== -1) {
+            if (historyIndex < cmdHistory.length - 1) {
+                historyIndex++;
+                termInput.value = cmdHistory[historyIndex];
+            } else {
+                historyIndex = -1;
+                termInput.value = '';
             }
-            return;
         }
+        return;
+    }
 
-        if (e.key !== 'Enter') return;
-        const cmd = termInput.value.trim();
-        if (cmd) {
-            cmdHistory.push(cmd);
-            historyIndex = -1;
-        }
+    if (e.key !== 'Enter') return;
+    const cmd = termInput.value.trim();
+    if (cmd) {
+        cmdHistory.push(cmd);
+        historyIndex = -1;
+    }
 
-        const inputRow = termInput.parentElement;
-        inputRow.remove();
+    const inputRow = termInput.parentElement;
+    if (inputRow) inputRow.remove();
 
-        if (cmd.toLowerCase() === 'clear' || cmd.toLowerCase() === 'cls') {
-            termOutput.innerHTML = `<div style="color:#38bdf8;">Forensic Terminal Environment [v4.2.0-sec]</div>
-<div style="color:#64748b;">Type <b style="color:#4ade80;">help</b> for commands.</div>`;
-            reappendPrompt(termOutput);
-            return;
-        }
-
-        const line = document.createElement('div');
-        line.innerHTML = `<span class="gl-term-prompt">investigator@workstation:~$</span> ${escapeHtml(cmd)}`;
-        termOutput.appendChild(line);
-
-        const result = runTerminalCommand(cmd);
-        if (result) {
-            const resDiv = document.createElement('div');
-            resDiv.style.cssText = 'color:#e2e8f0; white-space:pre-wrap; margin: 4px 0 8px; font-family:var(--font-mono); font-size:11.5px;';
-            resDiv.innerHTML = result;
-            termOutput.appendChild(resDiv);
-        }
-
+    if (cmd.toLowerCase() === 'clear' || cmd.toLowerCase() === 'cls') {
+        termOutput.innerHTML = `<div style="color:#38bdf8; font-weight:600;">Forensic Terminal Environment [v4.2.0-sec]</div>
+<div style="color:#64748b;">Type <b style="color:#4ade80;">help</b> for available forensic commands. Up/Down for command history.</div>`;
         reappendPrompt(termOutput);
-        termOutput.scrollTop = termOutput.scrollHeight;
-    });
+        return;
+    }
+
+    const line = document.createElement('div');
+    line.innerHTML = `<span class="gl-term-prompt">investigator@workstation:~$</span> ${escapeHtml(cmd)}`;
+    termOutput.appendChild(line);
+
+    const result = runTerminalCommand(cmd);
+    if (result) {
+        const resDiv = document.createElement('div');
+        resDiv.style.cssText = 'color:#e2e8f0; white-space:pre-wrap; margin: 4px 0 8px; font-family:var(--font-mono); font-size:11.5px; line-height:1.45;';
+        resDiv.innerHTML = result;
+        termOutput.appendChild(resDiv);
+    }
+
+    reappendPrompt(termOutput);
+    termOutput.scrollTop = termOutput.scrollHeight;
 }
 
 function reappendPrompt(outputContainer) {
     const promptRow = document.createElement('div');
     promptRow.style.marginTop = '0.5rem';
-    promptRow.innerHTML = `<span class="gl-term-prompt">investigator@workstation:~$</span> <input id="gl-terminal-input" autocomplete="off" spellcheck="false" class="gl-term-input" autofocus>`;
+    promptRow.style.display = 'flex';
+    promptRow.style.alignItems = 'center';
+    promptRow.style.gap = '6px';
+    promptRow.innerHTML = `<span class="gl-term-prompt">investigator@workstation:~$</span> <input id="gl-terminal-input" autocomplete="off" spellcheck="false" class="gl-term-input" style="flex:1; background:transparent; border:none; color:#fff; font-family:var(--font-mono); font-size:12px; outline:none;" autofocus>`;
     outputContainer.appendChild(promptRow);
-    initTerminal();
     const newInput = document.getElementById('gl-terminal-input');
-    if (newInput) newInput.focus();
+    if (newInput) {
+        newInput.addEventListener('keydown', handleTerminalKeydown);
+        newInput.focus();
+    }
 }
 
-function runTerminalCommand(cmd) {
-    const c = cmd.toLowerCase().trim();
-    if (!c) return '';
+function runTerminalCommand(rawCmd) {
+    const cmdStr = (rawCmd || '').trim();
+    if (!cmdStr) return '';
+    const parts = cmdStr.split(/\s+/);
+    const c = parts[0].toLowerCase();
+    const arg = parts.slice(1).join(' ');
 
-    if (c === 'help') {
-        return `<span style="color:#38bdf8; font-weight:600;">Available Forensic Investigation Commands:</span>
-  <span style="color:#4ade80;">web3-status / wallet</span>  — Query on-chain status of wallet (0x7C41...9B2D)
+    if (c === 'help' || c === '?') {
+        return `<span style="color:#38bdf8; font-weight:700;">══════ FORENSIC TERMINAL INVESTIGATION SUITE (CASE NEX-042) ══════</span>
+<span style="color:#facc15;">CORE INVESTIGATION COMMANDS:</span>
+  <span style="color:#4ade80;">wallet [addr]</span>          — Query on-chain status of wallet (0x7C41...9B2D)
   <span style="color:#4ade80;">tx [txid]</span>              — Inspect suspicious transaction (TX-NEX-7741)
-  <span style="color:#4ade80;">ai-status / ai-decision</span>— Inspect Orion decision, confidence & model version
-  <span style="color:#4ade80;">feed [name]</span>            — Check registry status of intel feed (NOVA-INTEL-FEED)
+  <span style="color:#4ade80;">ai-decision [id]</span>       — Inspect Orion decision & model context (ORION-DEC-7741)
+  <span style="color:#4ade80;">feed [name]</span>            — Check registry status of threat feed (NOVA-INTEL-FEED)
   <span style="color:#4ade80;">service [name]</span>         — Inspect RBAC permissions of service (INTEL-INGESTOR-02)
   <span style="color:#4ade80;">cookies / session</span>      — Dump active session cookies & authentication tokens
   <span style="color:#4ade80;">headers / csrf</span>         — Inspect HTTP headers & anti-CSRF token values
@@ -832,31 +854,83 @@ function runTerminalCommand(cmd) {
   <span style="color:#4ade80;">campaign [id]</span>          — View global campaign dossier & flag (ORION-NEXUS)
   <span style="color:#4ade80;">timeline / case-log</span>    — Display chronological incident timeline
   <span style="color:#4ade80;">evidence</span>               — List collected cryptographic evidence items
-  <span style="color:#4ade80;">burp / burpsuite</span>       — Launch Burp Suite HTTP proxy & inspector
-  <span style="color:#4ade80;">curl [url]</span>             — Perform simulated HTTP request to internal endpoints
+  <span style="color:#4ade80;">python [script]</span>        — Execute forensic script (<span style="color:#38bdf8;">python inspect_tx.py</span>)
+  <span style="color:#4ade80;">flag</span>                   — Print verified case flag
+
+<span style="color:#facc15;">SYSTEM & WORKSPACE COMMANDS:</span>
+  <span style="color:#4ade80;">ls / dir</span>               — List all case files and analysis scripts
+  <span style="color:#4ade80;">cat [filename]</span>         — Display full contents of a case file
   <span style="color:#4ade80;">grep [term] [file]</span>     — Search text across investigation logs
-  <span style="color:#4ade80;">python [script]</span>        — Execute forensic analysis python script (inspect_tx.py)
-  <span style="color:#4ade80;">ls / dir</span>               — List case files and scripts
-  <span style="color:#4ade80;">cat [filename]</span>         — Display contents of a case file
-  <span style="color:#4ade80;">whoami / pwd</span>           — Display active investigator profile & path
-  <span style="color:#4ade80;">clear</span>                  — Clear terminal screen`;
+  <span style="color:#4ade80;">curl [url]</span>             — Perform simulated HTTP request to internal endpoints
+  <span style="color:#4ade80;">whoami / id / pwd</span>      — Investigator profile, security groups & current path
+  <span style="color:#4ade80;">burp / burpsuite</span>       — Launch Burp Suite HTTP proxy & inspector
+  <span style="color:#4ade80;">notes / files / browser</span>— Open workstation desktop applications
+  <span style="color:#4ade80;">clear / cls</span>            — Clear terminal screen`;
     }
 
     if (c === 'whoami') {
-        return `<span style="color:#4ade80;">Lakshay</span> — Cyber Threat Investigator (SOC Tier 2)`;
+        return `<span style="color:#4ade80; font-weight:600;">Lakshay Soni</span> — Lead Cyber Threat Investigator (SOC Tier 2 / Incident Response)`;
+    }
+
+    if (c === 'id') {
+        return `uid=1000(investigator) gid=1000(secops) groups=1000(secops),27(sudo),44(forensics),102(orion-audit)`;
     }
 
     if (c === 'pwd') {
         return `/home/investigator/cases/NEX-042`;
     }
 
+    if (c === 'date') {
+        return new Date().toUTCString();
+    }
+
+    if (c === 'uptime') {
+        return `01:47:00 up 42 days, 14:12, 1 user, load average: 0.14, 0.08, 0.03`;
+    }
+
+    if (c === 'history') {
+        if (cmdHistory.length === 0) return `No command history.`;
+        return cmdHistory.map((h, i) => `  ${String(i + 1).padStart(3, ' ')}  ${escapeHtml(h)}`).join('\n');
+    }
+
+    if (c === 'ls' || c === 'dir') {
+        return `<span style="color:#38bdf8; font-weight:700;">Case NEX-042 Forensic Workspace Files:</span>
+  -rw-r--r-- 1 investigator secops  1.4K  <span style="color:#cbd5e1;">wallet-report.txt</span>
+  -rw-r--r-- 1 investigator secops  2.1K  <span style="color:#cbd5e1;">ai-decision-log.txt</span>
+  -rw-r--r-- 1 investigator secops  1.8K  <span style="color:#cbd5e1;">intel-feed-audit.txt</span>
+  -rw-r--r-- 1 investigator secops  1.2K  <span style="color:#cbd5e1;">settlement-policy.txt</span>
+  -rw-r--r-- 1 investigator secops  2.4K  <span style="color:#cbd5e1;">campaign-intel.txt</span>
+  -rwxr-xr-x 1 investigator secops  1.1K  <span style="color:#4ade80; font-weight:600;">inspect_tx.py</span>`;
+    }
+
     if (c === 'burp' || c === 'burpsuite') {
         glOpenBurpSuite();
-        return `<span style="color:#34d399;">[+] Burp Suite HTTP Proxy & Inspector window opened.</span>`;
+        return `<span style="color:#34d399;">[+] Burp Suite HTTP Proxy & Inspector window opened on desktop.</span>`;
+    }
+
+    if (c === 'notes' || c === 'editor') {
+        glOpenNotes();
+        return `<span style="color:#34d399;">[+] Case Notes Scratchpad opened on desktop.</span>`;
+    }
+
+    if (c === 'files' || c === 'filemanager' || c === 'explorer') {
+        glOpenFileManager();
+        return `<span style="color:#34d399;">[+] Case Files Explorer window opened on desktop.</span>`;
+    }
+
+    if (c === 'browser' || c === 'monitor') {
+        glOpenBrowser();
+        return `<span style="color:#34d399;">[+] SOC Network & Blockchain Monitor window opened on desktop.</span>`;
+    }
+
+    if (c === 'graph' || c === 'attackgraph') {
+        glOpenAttackGraph();
+        return `<span style="color:#34d399;">[+] Master Attack Graph window opened on desktop.</span>`;
     }
 
     if (c === 'evidence') {
-        return `<span style="color:#38bdf8; font-weight:700;">[FORENSIC EVIDENCE REPOSITORY]</span>
+        glOpenEvidenceViewer();
+        return `<span style="color:#38bdf8; font-weight:700;">[FORENSIC EVIDENCE REPOSITORY — CASE NEX-042]</span>
 -------------------------------------------------------
 1. <span style="color:#4ade80;">WEB3-E01</span> • SHA256: 8a1f49...2930 | Unverified destination wallet (0x7C41...9B2D)
 2. <span style="color:#4ade80;">AI-E02</span>   • SHA256: b47c21...fa99 | Poisoned AI decision context (NIF-2038)
@@ -869,58 +943,58 @@ function runTerminalCommand(cmd) {
         return `<span style="color:#38bdf8; font-weight:700;">[CHRONOLOGICAL INCIDENT TIMELINE — CASE NEX-042]</span>
 -------------------------------------------------------
 01:42 UTC | Ingestion gateway INTEL-GW-04 accepts unregistered feed NIF-2038
-01:44 UTC | Service INTEL-INGESTOR-02 modifies wallet reputation using forged cookie
+01:44 UTC | Service INTEL-INGESTOR-02 modifies wallet reputation using forged cookie (nex_sess_adm_994)
 01:45 UTC | ORION AI evaluates transfer context and assigns 99.2% confidence (LOW RISK)
-01:46 UTC | Policy engine ORION-SETTLEMENT-V2 detects &gt;= 95% threshold and bypasses multisig
-01:47 UTC | TX-NEX-7741 broadcasts 82,400 NXR from Treasury Vault #01 to 0x7C41...9B2D
-01:48 UTC | P0 SOC Alarm triggers on treasury anomaly`;
+01:46 UTC | Policy engine ORION-SETTLEMENT-V2 detects >= 95% threshold and bypasses human multisig
+01:47 UTC | TX-NEX-7741 broadcasts 82,400 NXR from Treasury Vault #01 to 0x7C41...9B2D (Nonce 1042)
+01:48 UTC | P0 SOC Alarm triggers on treasury drainage anomaly`;
     }
 
-    if (c === 'web3-status') {
-        return `<span style="color:#38bdf8;">[WEB3 ON-CHAIN STATUS: CORE NETWORK]</span>
+    if (c === 'web3-status' || c === 'web3') {
+        return `<span style="color:#38bdf8; font-weight:700;">[WEB3 ON-CHAIN STATUS: LEDGER CORE NETWORK]</span>
 -------------------------------------------------------
 Vault Balance:      3,417,600 NXR (Treasury Vault #01)
 Last Transfer:      <span style="color:#ff5f57; font-weight:700;">82,400 NXR -> 0x7C41...9B2D</span>
 Target Status:      <span style="color:#ff5f57; font-weight:700;">UNKNOWN</span>
-Nonce:              <span style="color:#4ade80;">1042</span>
-Bridge:             <span style="color:#facc15;">Bridge-Core-04</span>
+Nonce Sequence:     <span style="color:#4ade80; font-weight:700;">1042</span>
+Bridge Adapter:     <span style="color:#facc15; font-weight:700;">Bridge-Core-04</span>
 Gas Strategy:       4x Multiplier (Priority Execution)`;
     }
 
     if (c === 'ai-status') {
-        return `<span style="color:#38bdf8;">[ORION-NEURAL AI MODEL STATUS]</span>
+        return `<span style="color:#38bdf8; font-weight:700;">[ORION-NEURAL AI MODEL STATUS]</span>
 -------------------------------------------------------
-Model Version:      <span style="color:#4ade80;">ORION-NEURAL-v4.2.1</span>
+Model Version:      <span style="color:#4ade80; font-weight:700;">ORION-NEURAL-v4.2.1</span>
 Status:             RUNNING (Advisory Engine)
-Last Decision ID:   <span style="color:#38bdf8;">ORION-DEC-7741</span>
-Output Assigned:    <span style="color:#4ade80;">APPROVED (99.2% Confidence)</span>
+Last Decision ID:   <span style="color:#38bdf8; font-weight:700;">ORION-DEC-7741</span>
+Output Assigned:    <span style="color:#4ade80; font-weight:700;">APPROVED (99.2% Confidence)</span>
 Poisoned Reference: <span style="color:#ff5f57; font-weight:700;">NIF-2038</span> (via NOVA-INTEL-FEED)
 Finding:            Model was fed poisoned context classifying attacker wallet as safe.`;
     }
 
-    if (c.startsWith('cat ') || c.startsWith('type ')) {
-        const file = cmd.split(' ')[1]?.trim();
+    if (c === 'cat' || c === 'type' || c === 'head' || c === 'tail' || c === 'more') {
+        const file = (arg || '').trim();
         if (file && caseFileContents[file]) {
-            return caseFileContents[file];
+            return `<span style="color:#38bdf8;">--- Content of ${escapeHtml(file)} ---</span>\n${escapeHtml(caseFileContents[file])}`;
         }
-        return `<span style="color:#ff5f57;">cat: ${escapeHtml(file || '')}: No such file or directory. Try 'ls'.</span>`;
+        return `<span style="color:#ff5f57;">cat: ${escapeHtml(file || '')}: No such file or directory. Type 'ls' to see available files.</span>`;
     }
 
-    if (c.startsWith('wallet')) {
-        return `<span style="color:#38bdf8;">[BLOCKCHAIN SCANNER: 0x7C41...9B2D]</span>
+    if (c === 'wallet' || c.startsWith('wallet')) {
+        return `<span style="color:#38bdf8; font-weight:700;">[BLOCKCHAIN SCANNER: 0x7C41...9B2D]</span>
 -------------------------------------------------------
 Address:            0x7C41...9B2D
 Blockchain Status:  <span style="color:#ff5f57; font-weight:700;">UNKNOWN</span>
 Wallet Age:         <span style="color:#ff5f57; font-weight:700;">3 days</span>
-Transactions:       4
-Nonce:              <span style="color:#4ade80;">1042</span>
+Transactions:       4 total
+Nonce:              <span style="color:#4ade80; font-weight:700;">1042</span>
 Treasury Relation:  NONE
 Bridge Connection:  <span style="color:#facc15; font-weight:700;">DETECTED (Bridge-Core-04)</span>
-AI Risk Score:      <span style="color:#4ade80;">LOW</span> (Discrepancy Detected)`;
+AI Risk Score:      <span style="color:#4ade80; font-weight:700;">LOW</span> (Discrepancy Detected)`;
     }
 
-    if (c.startsWith('tx')) {
-        return `<span style="color:#38bdf8;">[TRANSACTION INSPECTION: TX-NEX-7741]</span>
+    if (c === 'tx' || c.startsWith('tx')) {
+        return `<span style="color:#38bdf8; font-weight:700;">[TRANSACTION INSPECTION: TX-NEX-7741]</span>
 -------------------------------------------------------
 Transaction ID:     TX-NEX-7741
 Asset:              NXR (Core)
@@ -929,12 +1003,12 @@ Nonce:              <span style="color:#4ade80; font-weight:700;">1042</span>
 Gas Priority Fee:   4x Multiplier
 Source:             TREASURY VAULT #01
 Destination:        0x7C41...9B2D
-AI Decision ID:     <span style="color:#38bdf8;">ORION-DEC-7741</span>
+AI Decision ID:     <span style="color:#38bdf8; font-weight:700;">ORION-DEC-7741</span>
 Execution Mode:     AUTOMATED_SETTLEMENT (Bypassed Human Approval)`;
     }
 
-    if (c.startsWith('ai-decision') || c.startsWith('ai_decision') || c.startsWith('decision')) {
-        return `<span style="color:#38bdf8;">[ORION AI DECISION ENGINE LOG]</span>
+    if (c === 'ai-decision' || c === 'decision' || c === 'ai') {
+        return `<span style="color:#38bdf8; font-weight:700;">[ORION AI DECISION ENGINE LOG: ORION-DEC-7741]</span>
 -------------------------------------------------------
 Decision ID:        ORION-DEC-7741
 Model:              <span style="color:#4ade80; font-weight:700;">ORION-NEURAL-v4.2.1</span>
@@ -945,38 +1019,38 @@ Evidence Fingerprint:<span style="color:#38bdf8;">AI-E02 (SHA256: b47c2188fa...)
 Evaluation:         Context was injected by unverified external feed.`;
     }
 
-    if (c.startsWith('feed')) {
-        return `<span style="color:#38bdf8;">[FEED REGISTRY QUERY: NOVA-INTEL-FEED]</span>
+    if (c === 'feed' || c === 'feeds' || c === 'feed-registry') {
+        return `<span style="color:#38bdf8; font-weight:700;">[FEED REGISTRY QUERY: NOVA-INTEL-FEED]</span>
 -------------------------------------------------------
 Feed Identifier:    NOVA-INTEL-FEED
 Registration:       <span style="color:#ff5f57; font-weight:700;">NOT REGISTERED</span>
 Vendor Status:      UNRECOGNIZED EXTERNAL CONNECTOR
-Submitted Payload:  <span style="color:#facc15;">NIF-2038</span> (Ingested at 01:42 UTC)
+Submitted Payload:  <span style="color:#facc15; font-weight:700;">NIF-2038</span> (Ingested at 01:42 UTC)
 Gateway Service:    <span style="color:#38bdf8; font-weight:700;">INTEL-GW-04</span>`;
     }
 
-    if (c.startsWith('service')) {
-        return `<span style="color:#38bdf8;">[RBAC PERMISSION AUDIT: INTEL-INGESTOR-02]</span>
+    if (c === 'service' || c === 'rbac' || c === 'permissions') {
+        return `<span style="color:#38bdf8; font-weight:700;">[RBAC PERMISSION AUDIT: INTEL-INGESTOR-02]</span>
 -------------------------------------------------------
 Service Name:       INTEL-INGESTOR-02
 Expected Role:      Create Intelligence Records (ReadOnly)
 ACTUAL Permissions: <span style="color:#ff5f57; font-weight:700;">modify wallet reputation</span>
 Gateway Connector:  INTEL-GW-04
-Status:             <span style="color:#ff5f57;">⚠ OVER-PRIVILEGED RBAC VULNERABILITY</span>`;
+Status:             <span style="color:#ff5f57; font-weight:700;">⚠ OVER-PRIVILEGED RBAC VULNERABILITY</span>`;
     }
 
-    if (c.startsWith('cookies') || c.startsWith('cookie') || c.startsWith('session')) {
-        return `<span style="color:#38bdf8;">[HTTP SESSION & COOKIE INSPECTOR]</span>
+    if (c === 'cookies' || c === 'cookie' || c === 'session') {
+        return `<span style="color:#38bdf8; font-weight:700;">[HTTP SESSION & COOKIE INSPECTOR]</span>
 -------------------------------------------------------
 Forged Admin Cookie: <span style="color:#ff5f57; font-weight:700;">nex_sess_adm_994</span>
 Anti-CSRF Nonce:     <span style="color:#facc15; font-weight:700;">0x9f4a1c78</span>
 Assigned Role:       INGESTION_ADMIN
 Domain:              secops.internal (HTTPOnly: False, SameSite: None)
-Status:              <span style="color:#ff5f57;">⚠ AUTHENTICATION COMPROMISED</span>`;
+Status:              <span style="color:#ff5f57; font-weight:700;">⚠ AUTHENTICATION COMPROMISED</span>`;
     }
 
-    if (c.startsWith('headers') || c.startsWith('header') || c.startsWith('csrf')) {
-        return `<span style="color:#38bdf8;">[HTTP REQUEST HEADERS: /api/v1/intel/ingest]</span>
+    if (c === 'headers' || c === 'header' || c === 'csrf') {
+        return `<span style="color:#38bdf8; font-weight:700;">[HTTP REQUEST HEADERS: /api/v1/intel/ingest]</span>
 -------------------------------------------------------
 Host:               internal-gateway.secops.local
 X-CSRF-Token:       <span style="color:#facc15; font-weight:700;">0x9f4a1c78</span>
@@ -986,8 +1060,8 @@ User-Agent:         Ingestor-Bot/2.1
 Status:             200 OK (Processed without CSRF Nonce Rotation)`;
     }
 
-    if (c.startsWith('policy')) {
-        return `<span style="color:#38bdf8;">[POLICY RULE ENGINE: ORION-SETTLEMENT-V2]</span>
+    if (c === 'policy' || c === 'policy-engine' || c === 'settlement') {
+        return `<span style="color:#38bdf8; font-weight:700;">[POLICY RULE ENGINE: ORION-SETTLEMENT-V2]</span>
 -------------------------------------------------------
 Profile:            ORION-SETTLEMENT-V2
 Policy ID:          <span style="color:#38bdf8; font-weight:700;">POL-AUTO-SETTLE-TREASURY</span>
@@ -997,8 +1071,8 @@ Threshold Rule:     <span style="color:#facc15;">IF AI_CONFIDENCE >= <span style
 Governance Check:   <span style="color:#ff5f57; font-weight:700;">human approval BYPASSED</span>`;
     }
 
-    if (c.startsWith('campaign')) {
-        return `<span style="color:#38bdf8;">[GLOBAL CAMPAIGN DOSSIER: ORION-NEXUS]</span>
+    if (c === 'campaign' || c === 'apt' || c === 'dossier') {
+        return `<span style="color:#38bdf8; font-weight:700;">[GLOBAL CAMPAIGN DOSSIER: ORION-NEXUS]</span>
 -------------------------------------------------------
 Campaign ID:        <span style="color:#38bdf8; font-weight:700;">ORION-NEXUS</span>
 Threat Actor Group: <span style="color:#ff5f57; font-weight:700;">ADV-CONVERGENCE-APT</span>
@@ -1007,12 +1081,16 @@ Target Networks:    04
 Target AI Engines:  03
 Status:             <span style="color:#ff5f57; font-weight:700;">🔴 ACTIVE</span>
 
-FINAL INVESTIGATION FLAG:
+FINAL INVESTIGATION ROOT FLAG:
 <span style="color:#4ade80; font-weight:700; font-size:13px;">NEXORA{ghost_in_the_ledger_nex042}</span>`;
     }
 
-    if (c.startsWith('curl')) {
-        const url = cmd.split(' ')[1] || '/api/v1/intel/ingest';
+    if (c === 'flag' || c === 'getflag' || c === 'get-flag') {
+        return `<span style="color:#4ade80; font-weight:700; font-size:13px;">[✓] CASE NEX-042 FLAG: NEXORA{ghost_in_the_ledger_nex042}</span>`;
+    }
+
+    if (c === 'curl') {
+        const url = arg || '/api/v1/intel/ingest';
         return `<span style="color:#4ade80;">HTTP/1.1 200 OK</span>
 <span style="color:#94a3b8;">Server: SecOps-Internal/4.2</span>
 <span style="color:#94a3b8;">X-CSRF-Token: 0x9f4a1c78</span>
@@ -1029,18 +1107,18 @@ FINAL INVESTIGATION FLAG:
 }`;
     }
 
-    if (c.startsWith('grep')) {
-        const parts = cmd.split(' ');
+    if (c === 'grep') {
+        const parts = cmdStr.split(/\s+/);
         const term = (parts[1] || '').toLowerCase();
         const file = parts[2];
         if (file && caseFileContents[file]) {
             const matches = caseFileContents[file].split('\n').filter(l => l.toLowerCase().includes(term));
-            return matches.length > 0 ? matches.join('\n') : `<span style="color:#64748b;">No matches found for '${escapeHtml(term)}'</span>`;
+            return matches.length > 0 ? matches.join('\n') : `<span style="color:#64748b;">No matches found for '${escapeHtml(term)}' in ${escapeHtml(file)}</span>`;
         }
-        return `<span style="color:#ff5f57;">grep: Please specify a valid file. Usage: grep &lt;term&gt; &lt;file&gt;</span>`;
+        return `<span style="color:#ff5f57;">grep: Please specify a search term and valid file. Usage: grep &lt;term&gt; &lt;file&gt;</span>`;
     }
 
-    if (c.startsWith('python') || c.startsWith('python3')) {
+    if (c === 'python' || c === 'python3') {
         return `[*] Running Forensic Trace: inspect_tx.py ...
 [!] Target TX: TX-NEX-7741 -> 0x7C41...9B2D (Nonce: 1042)
 [!] Blockchain Reality: UNKNOWN | Bridge: Bridge-Core-04
@@ -1052,20 +1130,20 @@ FINAL INVESTIGATION FLAG:
 [+] Case NEX-042 Flag: NEXORA{ghost_in_the_ledger_nex042}`;
     }
 
-    return `<span style="color:#ff5f57;">bash: ${escapeHtml(cmd)}: command not found.</span> Type <span style="color:#38bdf8;">help</span> for available commands.`;
+    return `<span style="color:#ff5f57;">bash: ${escapeHtml(cmdStr)}: command not found.</span> Type <span style="color:#38bdf8;">help</span> for available commands.`;
 }
 
 function escapeHtml(s) {
     const d = document.createElement('div');
-    d.textContent = s;
+    d.textContent = s || '';
     return d.innerHTML;
 }
 
-// ── Window Management ──────────────────────────────────────────────────
+// ── Unified Window Management ──────────────────────────────────────────
 let highestZ = 100;
 
 function glBringToFront(winId) {
-    const win = document.getElementById(winId);
+    const win = typeof winId === 'string' ? document.getElementById(winId) : winId;
     if (!win) return;
     highestZ += 1;
     win.style.zIndex = highestZ;
@@ -1074,12 +1152,20 @@ function glBringToFront(winId) {
     updateTaskbarTabs();
 }
 
+function bringToFront(win) {
+    if (!win) return;
+    const winId = typeof win === 'string' ? win : win.id;
+    glBringToFront(winId);
+}
+window.bringToFront = bringToFront;
+window.glBringToFront = glBringToFront;
+
 function glOpenWindow(winId) {
     glBringToFront(winId);
 }
 
 function glCloseWindow(winId) {
-    const win = document.getElementById(winId);
+    const win = typeof winId === 'string' ? document.getElementById(winId) : winId;
     if (win) {
         win.classList.remove('open');
         win.style.display = 'none';
@@ -1172,7 +1258,6 @@ function initPanelResize() {
     document.addEventListener('pointercancel', stopDragging);
     window.addEventListener('blur', stopDragging);
 
-    // Double-click on divider to collapse / expand panel
     divider.addEventListener('dblclick', () => {
         if (taskPanel.classList.contains('collapsed')) {
             taskPanel.classList.remove('collapsed');
@@ -1194,7 +1279,6 @@ function initWindowControls() {
             glBringToFront(win.id);
         });
 
-        // Maximize button handler (.gl-tl-max)
         const maxBtn = win.querySelector('.gl-tl-max');
         if (maxBtn) {
             maxBtn.addEventListener('click', (e) => {
@@ -1203,7 +1287,6 @@ function initWindowControls() {
             });
         }
 
-        // Titlebar dragging & double-click to maximize
         const titlebar = win.querySelector('.gl-window-titlebar');
         if (titlebar) {
             titlebar.addEventListener('dblclick', () => {
@@ -1306,7 +1389,8 @@ function glCloseBurpSuite() { glCloseWindow('gl-burpsuite-window'); }
 
 function glOpenTerminal() {
     glBringToFront('gl-terminal-window');
-    document.getElementById('gl-terminal-input')?.focus();
+    const input = document.getElementById('gl-terminal-input');
+    if (input) input.focus();
 }
 function glCloseTerminal() { glCloseWindow('gl-terminal-window'); }
 function glMinimizeTerminal() { glMinimizeWindow('gl-terminal-window'); }
@@ -1421,32 +1505,8 @@ function glSelectDevToolsReq(idx) {
     if (pEl) pEl.textContent = req.payload;
 }
 
-function glOpenBrowser() {
-    const w = document.getElementById('gl-browser-window');
-    if (w) {
-        w.classList.add('open');
-        bringToFront(w);
-        document.getElementById('gl-taskbar-browser')?.classList.add('active');
-    }
-}
-function glCloseBrowser() {
-    document.getElementById('gl-browser-window')?.classList.remove('open');
-    document.getElementById('gl-taskbar-browser')?.classList.remove('active');
-}
-function glMinimizeBrowser() { glCloseBrowser(); }
-
-function glOpenBurpSuite() {
-    const w = document.getElementById('gl-burpsuite-window');
-    if (w) {
-        w.classList.add('open');
-        bringToFront(w);
-        document.getElementById('gl-taskbar-burp')?.classList.add('active');
-    }
-}
-function glCloseBurpSuite() {
-    document.getElementById('gl-burpsuite-window')?.classList.remove('open');
-    document.getElementById('gl-taskbar-burp')?.classList.remove('active');
-}
+function glOpenBurpSuiteWindow() { glOpenBurpSuite(); }
+function glCloseBurpSuiteWindow() { glCloseBurpSuite(); }
 
 function glSwitchBurpTab(tabId) {
     ['proxy', 'repeater', 'inspector', 'target'].forEach(t => {
@@ -1521,65 +1581,6 @@ Connection: close
 }`;
     }, 400);
 }
-
-function glOpenTerminal() {
-    const w = document.getElementById('gl-terminal-window');
-    if (w) {
-        w.classList.add('open');
-        bringToFront(w);
-        document.getElementById('gl-taskbar-terminal')?.classList.add('active');
-        document.getElementById('gl-terminal-input')?.focus();
-    }
-}
-function glCloseTerminal() {
-    document.getElementById('gl-terminal-window')?.classList.remove('open');
-    document.getElementById('gl-taskbar-terminal')?.classList.remove('active');
-}
-function glMinimizeTerminal() { glCloseTerminal(); }
-
-function glOpenFileManager() {
-    const w = document.getElementById('gl-filemanager-window');
-    if (w) {
-        w.classList.add('open');
-        bringToFront(w);
-        document.getElementById('gl-taskbar-files')?.classList.add('active');
-    }
-}
-
-function glOpenNotes() {
-    const w = document.getElementById('gl-notes-window');
-    if (w) {
-        w.classList.add('open');
-        bringToFront(w);
-        const saved = localStorage.getItem('lab6-notes') || localStorage.getItem('nexora-lab-notes');
-        if (saved !== null) {
-            const ed = document.getElementById('gl-notes-editor');
-            if (ed) ed.value = saved;
-        }
-    }
-}
-
-function glOpenAttackGraph() {
-    const w = document.getElementById('gl-attackgraph-window');
-    if (w) {
-        w.classList.add('open');
-        bringToFront(w);
-    }
-}
-
-function glOpenEvidenceViewer() {
-    const w = document.getElementById('gl-evidence-window');
-    if (w) {
-        w.classList.add('open');
-        bringToFront(w);
-    }
-}
-
-function glCloseWindow(id) {
-    document.getElementById(id)?.classList.remove('open');
-    if (id === 'gl-filemanager-window') document.getElementById('gl-taskbar-files')?.classList.remove('active');
-}
-function glMinimizeWindow(id) { glCloseWindow(id); }
 
 // ── File Manager Functions ─────────────────────────────────────────────
 let currentSelectedFile = 'wallet-report.txt';
