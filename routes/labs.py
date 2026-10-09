@@ -120,6 +120,10 @@ def manual_lab_environment(lab_id):
 def workstation(lab_id):
     if 'user_id' not in session:
         return redirect(url_for('auth.login'))
+    if str(lab_id).lower() in ('lab6', 'ghost-in-the-ledger', 'ghost_in_the_ledger', 'the-ghost-in-the-ledger'):
+        return redirect(url_for('labs.ghost_ledger_workstation'))
+    if str(lab_id).lower() in ('lab7', 'vanishing-consensus', 'vanishing_consensus', 'the-vanishing-consensus'):
+        return redirect(url_for('labs.vanishing_consensus_workstation'))
     user_id = session['user_id']
     
     # Get missions for this lab
