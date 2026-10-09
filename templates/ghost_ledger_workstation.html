@@ -1049,7 +1049,7 @@
                     <div style="color: #64748b;">Type <b style="color: #4ade80;">help</b> for commands. Use Up/Down arrows for history.</div>
                     <div style="margin-top:0.5rem;">
                         <span class="gl-term-prompt">investigator@workstation:~$</span>
-                        <input id="gl-terminal-input" autocomplete="off" spellcheck="false" class="gl-term-input" autofocus>
+                        <input id="gl-terminal-input" autocomplete="off" spellcheck="false" class="gl-term-input" onkeydown="handleTerminalKeydown(event)" autofocus>
                     </div>
                 </div>
             </div>
@@ -1463,7 +1463,7 @@ Content-Type: application/json
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/ghost_ledger_desktop.js') }}"></script>
+<script src="{{ url_for('static', filename='js/ghost_ledger_desktop.js') }}?v=4.2.2"></script>
 <script>
 function restartLab(labId) {
     if (!confirm('Reset the investigation? All 5 chapters and 25 objectives will be cleared and the timer will reset to 00:00.')) return;

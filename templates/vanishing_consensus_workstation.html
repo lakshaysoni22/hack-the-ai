@@ -785,7 +785,7 @@
                     </div>
                     <div style="display:flex; align-items:center; gap:6px; margin-top:8px;">
                         <span style="font-family:var(--font-mono); font-size:12px; color:#38bdf8;">investigator@workstation:~$</span>
-                        <input type="text" id="gl-term-input" style="flex:1; background:transparent; border:none; color:#fff; font-family:var(--font-mono); font-size:12px; outline:none;" autofocus>
+                        <input type="text" id="gl-term-input" onkeydown="handleVcTerminalKeydown(event)" style="flex:1; background:transparent; border:none; color:#fff; font-family:var(--font-mono); font-size:12px; outline:none;" autofocus>
                     </div>
                 </div>
             </div>
@@ -1141,5 +1141,5 @@ Content-Type: application/json
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/vanishing_consensus_desktop.js') }}"></script>
+<script src="{{ url_for('static', filename='js/vanishing_consensus_desktop.js') }}?v=4.2.2"></script>
 {% endblock %}

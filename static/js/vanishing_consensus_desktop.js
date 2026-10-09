@@ -995,57 +995,78 @@ let vcHistoryIndex = -1;
 function setupTerminal() {
     const termInput = document.getElementById('gl-term-input');
     const termBody = document.getElementById('gl-term-body');
-    if (!termInput || !termBody) return;
+    if (!termBody) return;
 
     // Click anywhere on terminal body to focus input
     termBody.onclick = () => {
-        termInput.focus();
+        const activeInput = document.getElementById('gl-term-input') || termBody.querySelector('input');
+        if (activeInput) activeInput.focus();
     };
 
-    termInput.addEventListener('keydown', (e) => {
-        if (e.key === 'ArrowUp') {
-            e.preventDefault();
-            if (vcCmdHistory.length === 0) return;
-            if (vcHistoryIndex === -1) vcHistoryIndex = vcCmdHistory.length - 1;
-            else if (vcHistoryIndex > 0) vcHistoryIndex--;
-            termInput.value = vcCmdHistory[vcHistoryIndex] || '';
-            return;
-        }
-        if (e.key === 'ArrowDown') {
-            e.preventDefault();
-            if (vcHistoryIndex !== -1) {
-                if (vcHistoryIndex < vcCmdHistory.length - 1) {
-                    vcHistoryIndex++;
-                    termInput.value = vcCmdHistory[vcHistoryIndex];
-                } else {
-                    vcHistoryIndex = -1;
-                    termInput.value = '';
-                }
-            }
-            return;
-        }
+    termBody.removeEventListener('keydown', handleVcTerminalKeydown);
+    termBody.addEventListener('keydown', handleVcTerminalKeydown);
 
-        if (e.key === 'Enter') {
-            const rawCmd = termInput.value.trim();
-            termInput.value = '';
-            if (!rawCmd) return;
-
-            vcCmdHistory.push(rawCmd);
-            vcHistoryIndex = -1;
-
-            // Echo command
-            const echo = document.createElement('div');
-            echo.className = 'gl-term-line';
-            echo.style.margin = '4px 0 2px';
-            echo.innerHTML = `<span class="gl-term-prompt" style="color:#38bdf8; font-weight:600;">investigator@workstation:~$</span> ${escapeHtml(rawCmd)}`;
-            termBody.appendChild(echo);
-
-            // Execute command
-            handleTerminalCommand(rawCmd, termBody);
-            termBody.scrollTop = termBody.scrollHeight;
-        }
-    });
+    if (termInput) {
+        termInput.removeEventListener('keydown', handleVcTerminalKeydown);
+        termInput.addEventListener('keydown', handleVcTerminalKeydown);
+    }
 }
+
+function handleVcTerminalKeydown(e) {
+    const isEnter = e.key === 'Enter' || e.keyCode === 13 || e.which === 13;
+    const isUp = e.key === 'ArrowUp' || e.keyCode === 38;
+    const isDown = e.key === 'ArrowDown' || e.keyCode === 40;
+
+    const termInput = document.getElementById('gl-term-input');
+    const termBody = document.getElementById('gl-term-body');
+    if (!termInput || !termBody) return;
+
+    if (isUp) {
+        e.preventDefault();
+        if (vcCmdHistory.length === 0) return;
+        if (vcHistoryIndex === -1) vcHistoryIndex = vcCmdHistory.length - 1;
+        else if (vcHistoryIndex > 0) vcHistoryIndex--;
+        termInput.value = vcCmdHistory[vcHistoryIndex] || '';
+        return;
+    }
+    if (isDown) {
+        e.preventDefault();
+        if (vcHistoryIndex !== -1) {
+            if (vcHistoryIndex < vcCmdHistory.length - 1) {
+                vcHistoryIndex++;
+                termInput.value = vcCmdHistory[vcHistoryIndex];
+            } else {
+                vcHistoryIndex = -1;
+                termInput.value = '';
+            }
+        }
+        return;
+    }
+
+    if (isEnter) {
+        e.preventDefault();
+        const rawCmd = termInput.value.trim();
+        termInput.value = '';
+        if (!rawCmd) return;
+
+        vcCmdHistory.push(rawCmd);
+        vcHistoryIndex = -1;
+
+        // Echo command
+        const echo = document.createElement('div');
+        echo.className = 'gl-term-line';
+        echo.style.margin = '4px 0 2px';
+        echo.innerHTML = `<span class="gl-term-prompt" style="color:#38bdf8; font-weight:600;">investigator@workstation:~$</span> ${escapeHtml(rawCmd)}`;
+        termBody.appendChild(echo);
+
+        // Execute command
+        handleTerminalCommand(rawCmd, termBody);
+        termBody.scrollTop = termBody.scrollHeight;
+    }
+}
+
+window.setupTerminal = setupTerminal;
+window.handleVcTerminalKeydown = handleVcTerminalKeydown;
 
 function handleTerminalCommand(cmdStr, termBody) {
     const parts = cmdStr.trim().split(/\s+/);

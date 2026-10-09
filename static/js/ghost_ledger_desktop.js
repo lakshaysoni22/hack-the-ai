@@ -746,24 +746,41 @@ let historyIndex = -1;
 function initTerminal() {
     const termInput = document.getElementById('gl-terminal-input');
     const termOutput = document.getElementById('gl-terminal-output');
-    if (!termInput || !termOutput) return;
+    if (!termOutput) return;
 
     // Ensure terminal body click always focuses the active input
     termOutput.onclick = () => {
-        const activeInput = document.getElementById('gl-terminal-input');
+        const activeInput = document.getElementById('gl-terminal-input') || termOutput.querySelector('input');
         if (activeInput) activeInput.focus();
     };
 
-    termInput.addEventListener('keydown', handleTerminalKeydown);
-    termInput.focus();
+    // Event delegation on termOutput container for seamless keydown capture
+    termOutput.removeEventListener('keydown', handleTerminalContainerKeydown);
+    termOutput.addEventListener('keydown', handleTerminalContainerKeydown);
+
+    if (termInput) {
+        termInput.removeEventListener('keydown', handleTerminalKeydown);
+        termInput.addEventListener('keydown', handleTerminalKeydown);
+        termInput.focus();
+    }
+}
+
+function handleTerminalContainerKeydown(e) {
+    if (e.target && (e.target.id === 'gl-terminal-input' || e.target.classList.contains('gl-term-input') || e.target.tagName === 'INPUT')) {
+        handleTerminalKeydown(e);
+    }
 }
 
 function handleTerminalKeydown(e) {
+    const isEnter = e.key === 'Enter' || e.keyCode === 13 || e.which === 13;
+    const isUp = e.key === 'ArrowUp' || e.keyCode === 38;
+    const isDown = e.key === 'ArrowDown' || e.keyCode === 40;
+
     const termInput = e.target;
     const termOutput = document.getElementById('gl-terminal-output');
     if (!termInput || !termOutput) return;
 
-    if (e.key === 'ArrowUp') {
+    if (isUp) {
         e.preventDefault();
         if (cmdHistory.length === 0) return;
         if (historyIndex === -1) historyIndex = cmdHistory.length - 1;
@@ -771,7 +788,7 @@ function handleTerminalKeydown(e) {
         termInput.value = cmdHistory[historyIndex] || '';
         return;
     }
-    if (e.key === 'ArrowDown') {
+    if (isDown) {
         e.preventDefault();
         if (historyIndex !== -1) {
             if (historyIndex < cmdHistory.length - 1) {
@@ -785,7 +802,8 @@ function handleTerminalKeydown(e) {
         return;
     }
 
-    if (e.key !== 'Enter') return;
+    if (!isEnter) return;
+    e.preventDefault();
     const cmd = termInput.value.trim();
     if (cmd) {
         cmdHistory.push(cmd);
@@ -824,7 +842,7 @@ function reappendPrompt(outputContainer) {
     promptRow.style.display = 'flex';
     promptRow.style.alignItems = 'center';
     promptRow.style.gap = '6px';
-    promptRow.innerHTML = `<span class="gl-term-prompt">investigator@workstation:~$</span> <input id="gl-terminal-input" autocomplete="off" spellcheck="false" class="gl-term-input" style="flex:1; background:transparent; border:none; color:#fff; font-family:var(--font-mono); font-size:12px; outline:none;" autofocus>`;
+    promptRow.innerHTML = `<span class="gl-term-prompt">investigator@workstation:~$</span> <input id="gl-terminal-input" autocomplete="off" spellcheck="false" class="gl-term-input" onkeydown="handleTerminalKeydown(event)" style="flex:1; background:transparent; border:none; color:#fff; font-family:var(--font-mono); font-size:12px; outline:none;" autofocus>`;
     outputContainer.appendChild(promptRow);
     const newInput = document.getElementById('gl-terminal-input');
     if (newInput) {
@@ -832,6 +850,9 @@ function reappendPrompt(outputContainer) {
         newInput.focus();
     }
 }
+
+window.initTerminal = initTerminal;
+window.handleTerminalKeydown = handleTerminalKeydown;
 
 function runTerminalCommand(rawCmd) {
     const cmdStr = (rawCmd || '').trim();
