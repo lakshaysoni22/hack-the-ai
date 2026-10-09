@@ -41,3 +41,6 @@ locustfile.py
 migrations/versions/__pycache__/
 
 .vercel
+
+.vercel
+.env*

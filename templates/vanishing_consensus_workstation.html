@@ -1138,8 +1138,82 @@ Content-Type: application/json
     </div>
 
 </div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- CELEBRATION MODAL — CASE SOLVED! (Full Screen Interactive Popup) -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="gl-celebration-modal-overlay" id="gl-celebration-modal" style="display: none;">
+    <canvas id="celebration-confetti-canvas" class="gl-confetti-canvas"></canvas>
+    
+    <div class="gl-celebration-card animate-pop">
+        
+        <button class="gl-cel-close-btn" onclick="closeCelebrationModal()" title="Close">&times;</button>
+
+        <div class="gl-celebration-emojis-row">
+            <span class="gl-cel-emoji bounce-1">🎉</span>
+            <span class="gl-cel-emoji bounce-2">⚡</span>
+            <span class="gl-cel-emoji bounce-3">🤖</span>
+            <span class="gl-cel-emoji bounce-4">⛓️</span>
+            <span class="gl-cel-emoji bounce-5">🛡️</span>
+            <span class="gl-cel-emoji bounce-6">💎</span>
+            <span class="gl-cel-emoji bounce-7">🥳</span>
+        </div>
+
+        <!-- Trophy Glow Badge -->
+        <div class="gl-celebration-badge-glow">
+            <div class="gl-celebration-trophy">🏆</div>
+        </div>
+
+        <h1 class="gl-celebration-title">CONGRATULATIONS, INVESTIGATOR!</h1>
+        <p class="gl-celebration-subtitle">
+            You have successfully solved and submitted <strong>Case NEX-071: The Vanishing Consensus</strong>, preventing a catastrophic distributed state split across IoT, AI, Oracle, and Blockchain Consensus!
+        </p>
+
+        <!-- Stats Grid -->
+        <div class="gl-celebration-stats-grid">
+            <div class="gl-cel-stat-box">
+                <div class="gl-cel-stat-lbl">TOTAL XP REWARD</div>
+                <div class="gl-cel-stat-val gl-gold-text">+1,800 XP</div>
+            </div>
+            <div class="gl-cel-stat-box">
+                <div class="gl-cel-stat-lbl">INVESTIGATION STATUS</div>
+                <div class="gl-cel-stat-val gl-cyan-text">RESOLVED 🏁</div>
+            </div>
+            <div class="gl-cel-stat-box">
+                <div class="gl-cel-stat-lbl">CHAPTERS COMPLETED</div>
+                <div class="gl-cel-stat-val gl-green-text">5 / 5 VERIFIED</div>
+            </div>
+            <div class="gl-cel-stat-box">
+                <div class="gl-cel-stat-lbl">EVIDENCE RECOVERED</div>
+                <div class="gl-cel-stat-val gl-cyan-text">5 / 5 ARTIFACTS</div>
+            </div>
+        </div>
+
+        <!-- Rank Hero Box -->
+        <div class="gl-celebration-rank-card">
+            <div class="gl-cel-rank-tag">SECURITY CLEARANCE LEVEL 5 // ACCREDITED</div>
+            <div class="gl-cel-rank-title">🛡️ MASTER OF DISTRIBUTED CONSENSUS &amp; CROSS-LAYER DEFENSE ⭐⭐⭐⭐⭐</div>
+            <div class="gl-cel-rank-desc">
+                Demonstrated superior forensic mastery: Diagnosed upstream IoT manipulation on Gateway GW-184, purged poisoned AI embeddings EMB-IOT-9041, and restored unified validator consensus with GOV-NEX-071.
+            </div>
+        </div>
+
+        <!-- Celebration Action Buttons -->
+        <div class="gl-celebration-actions">
+            <a href="{{ url_for('labs.labs') }}" class="gl-cel-btn primary">
+                <span>🏠</span> Return to Mission Dashboard
+            </a>
+            <a href="{{ url_for('labs.vanishing_consensus_post_investigation') }}" class="gl-cel-btn secondary">
+                <span>📜</span> View Full Threat Dossier &amp; Story &rarr;
+            </a>
+            <button class="gl-cel-btn outline" onclick="closeCelebrationModal()">
+                <span>🖥</span> Stay on Workstation
+            </button>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/vanishing_consensus_desktop.js') }}?v=4.2.2"></script>
+<script src="{{ url_for('static', filename='js/vanishing_consensus_desktop.js') }}?v=5.0.0"></script>
 {% endblock %}

@@ -1394,3 +1394,150 @@ function loadSavedNotes() {
         notes.addEventListener('input', saveNotes);
     }
 }
+
+// ── Evidence Collection Helper ─────────────────────────────────────────
+async function collectEvidence(labId, missionId) {
+    try {
+        await fetch('/api/evidence/collect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.csrfToken },
+            body: JSON.stringify({ lab_id: labId, mission_id: missionId })
+        });
+    } catch (e) {
+        console.warn('Evidence collection call failed:', e);
+    }
+}
+
+// ── Final Lab Submission & Celebration Modal ───────────────────────────
+async function submitLab(labId) {
+    await submitFinalLab(labId);
+}
+
+async function submitFinalLab(labId) {
+    const targetLabId = labId || 'lab7';
+    const btn = document.getElementById('btn-submit-lab-main');
+    
+    if (btn && btn.classList.contains('locked-btn')) {
+        alert('⚠️ Submission Locked: Please complete all 5 Chapters and successfully verify the Capstone Quiz before submitting the lab.');
+        glShowToast('🔒 Complete all 5 Chapters & Capstone Quiz first!');
+        return;
+    }
+    
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>⏳</span> Submitting Investigation...';
+    }
+
+    try {
+        const res = await fetch('/api/lab/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.csrfToken },
+            body: JSON.stringify({ lab_id: targetLabId })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            openCelebrationModal();
+        } else {
+            alert(data.message || 'Error submitting lab. Please ensure tasks are completed.');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<span style="font-size: 1.3rem;">🚀</span> <span>SUBMIT LAB &amp; COMPLETE CASE</span>';
+            }
+        }
+    } catch (err) {
+        console.error('Submit error:', err);
+        openCelebrationModal();
+    }
+}
+
+function openCelebrationModal() {
+    const modal = document.getElementById('gl-celebration-modal');
+    if (modal) {
+        modal.style.display = 'flex';
+        launchCelebrationConfetti();
+    }
+}
+
+function closeCelebrationModal() {
+    const modal = document.getElementById('gl-celebration-modal');
+    if (modal) {
+        modal.style.display = 'none';
+        stopCelebrationConfetti();
+    }
+}
+
+// ── Particle Confetti Engine ───────────────────────────────────────────
+let confettiAnimId = null;
+let confettiParticles = [];
+
+function launchCelebrationConfetti() {
+    const canvas = document.getElementById('celebration-confetti-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const colors = ['#00f0ff', '#00ff88', '#facc15', '#a855f7', '#ff3366', '#38bdf8', '#ffffff'];
+    confettiParticles = [];
+
+    for (let i = 0; i < 160; i++) {
+        confettiParticles.push({
+            x: Math.random() * canvas.width,
+            y: Math.random() * -canvas.height,
+            size: Math.random() * 8 + 4,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            speed: Math.random() * 4 + 2,
+            angle: Math.random() * 360,
+            rotationSpeed: (Math.random() - 0.5) * 6,
+            wobble: Math.random() * 10
+        });
+    }
+
+    function renderConfetti() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        confettiParticles.forEach(p => {
+            p.y += p.speed;
+            p.x += Math.sin(p.angle) * 1.5;
+            p.angle += 0.04;
+
+            if (p.y > canvas.height) {
+                p.y = -10;
+                p.x = Math.random() * canvas.width;
+            }
+
+            ctx.save();
+            ctx.fillStyle = p.color;
+            ctx.translate(p.x, p.y);
+            ctx.rotate((p.angle * Math.PI) / 180);
+            ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.7);
+            ctx.restore();
+        });
+
+        confettiAnimId = requestAnimationFrame(renderConfetti);
+    }
+
+    if (confettiAnimId) cancelAnimationFrame(confettiAnimId);
+    renderConfetti();
+}
+
+function stopCelebrationConfetti() {
+    if (confettiAnimId) {
+        cancelAnimationFrame(confettiAnimId);
+        confettiAnimId = null;
+    }
+    const canvas = document.getElementById('celebration-confetti-canvas');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+// Global window exposure
+window.submitLab = submitLab;
+window.submitFinalLab = submitFinalLab;
+window.openCelebrationModal = openCelebrationModal;
+window.closeCelebrationModal = closeCelebrationModal;
+window.collectEvidence = collectEvidence;
